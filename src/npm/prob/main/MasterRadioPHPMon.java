@@ -28,6 +28,8 @@ public class MasterRadioPHPMon implements Runnable {
 
     MasterRadioModel radio = null;
     DatabaseHelper db = new DatabaseHelper();
+    boolean simulation = true;
+    String deviceType = "MASTER_RADIO";
 
     MasterRadioPHPMon(MasterRadioModel m) {
         this.radio = m;
@@ -35,17 +37,18 @@ public class MasterRadioPHPMon implements Runnable {
 
     @Override
     public void run() {
-        boolean simulation = true;
+
         while (true) {
 
             String hvid = radio.getHvid();
-            String deviceID = radio.getHvmanagementadr() + "_" + radio.getHvnamn2();
+            String deviceID = radio.getHvserienr();
             String deviceName = radio.getHvnamn();
             String isAffected = "0";
             String problem = "problem";
             String device_ip = hvid;
             String eventMsg1 = "";
             String netadminMsg = "";
+            String serviceId = "";
 
             StringBuilder outputBuilder = new StringBuilder();
 
@@ -118,11 +121,13 @@ public class MasterRadioPHPMon implements Runnable {
                             NodeStatusLatencyMonitoring.masterRadioStateMap.put(hvid, modemState);
 
                             eventMsg1 = String.valueOf(modemState).equalsIgnoreCase("2") ? "master radio : " + deviceName + " change from Main to Standby" : "master radio : " + deviceName + " change in Main Mode";
-                            netadminMsg = String.valueOf(modemState).equalsIgnoreCase("2") ? "master radio : " + deviceName + " change from Main to Standby" : "master radio : " + deviceName + " change in Main Mode";
+                            netadminMsg = String.valueOf(modemState).equalsIgnoreCase("2") ? "status = " + modemState + "Active modem is STANDBY" : "status = " + modemState + " Active modem is MAIN";
+                            
 
                             isAffected = String.valueOf(modemState).equalsIgnoreCase("2") ? "1" : "0";
-                            problem = String.valueOf(modemState).equalsIgnoreCase("1") ? "1" : "0";
-                            db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "PING ICMP", event_time, netadminMsg, isAffected, problem);
+                            problem = String.valueOf(modemState).equalsIgnoreCase("1") ? "Cleared" : "Problem";
+                            serviceId = "mr_state";
+                            db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "Satel HSC100 monitoring", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
                         }
 
                     } catch (Exception e) {
@@ -157,10 +162,10 @@ public class MasterRadioPHPMon implements Runnable {
 
                         //TO DO: insert into event Log
                         eventMsg1 = "master radio : " + deviceName + " is Down";
-                        netadminMsg = "master radio : " + deviceName + " - Got no reply";
+                        netadminMsg = eventMsg1;
                         isAffected = "1";
-
-                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 4, "PING ICMP", event_time, netadminMsg, isAffected, problem);
+                        serviceId = "mr_status";
+                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 4, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
 
                     } else if (router_status_xml.equals("Down3") && router_status.equals("Down")) {
                         //    //System.out.println("%%%%%..Skip Down condition ");
@@ -170,10 +175,11 @@ public class MasterRadioPHPMon implements Runnable {
                         updateDeviceStatus(device_ip, "Up", event_time);
                         deviceStatusLog(device_ip, "Up", event_time);
                         eventMsg1 = "master radio : " + deviceName + " is Up";
-                        netadminMsg = "master radio : " + deviceName + "pl - 0";
+                        netadminMsg = eventMsg1;
                         isAffected = "0";
                         problem = "Cleared";
-                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "PING ICMP", event_time, netadminMsg, isAffected, problem);
+                        serviceId = "mr_status";
+                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
 //                            try {
 //                                StatusChangeDiff t22 = null;
 //                                t22 = new StatusChangeDiff();
@@ -198,10 +204,11 @@ public class MasterRadioPHPMon implements Runnable {
                         updateDeviceStatus(device_ip, "Up", event_time);
                         deviceStatusLog(device_ip, "Up", event_time);
                         eventMsg1 = "master radio : " + deviceName + " is up";
-                        netadminMsg = "master radio : " + deviceName + "pl - 0";
+                        netadminMsg = eventMsg1;
                         isAffected = "0";
                         problem = "Cleared";
-                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "PING ICMP", event_time, netadminMsg, isAffected, problem);
+                        serviceId = "mr_status";
+                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
 
 //                            try {
 //                                StatusChangeDiff t22 = null;
