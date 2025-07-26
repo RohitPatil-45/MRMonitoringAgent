@@ -252,9 +252,12 @@ public class MasterRadioPHPMon implements Runnable {
         PreparedStatement pst = null;
         try {
             con = Datasource.getConnection();
-            pst = con.prepareStatement("UPDATE mr_status_standby_main SET current_status=? WHERE Hvid=?");
+            pst = con.prepareStatement("UPDATE mr_status_standby_main SET current_status=?, EventTimestamp=?, current_status_Generated_Time=?, current_status_Cleared_Time=? WHERE Hvid=?");
             pst.setString(1, device_status);
-            pst.setString(2, device_ip);
+            pst.setTimestamp(2, eventTime);
+            pst.setTimestamp(3, device_status.equalsIgnoreCase("Down") ? eventTime : null);
+            pst.setTimestamp(4, device_status.equalsIgnoreCase("Up") ? eventTime : null);
+            pst.setString(5, device_ip);
 
             pst.executeUpdate();
         } catch (Exception e) {

@@ -44,13 +44,15 @@ public class MrStateUpdate implements Runnable{
             try {
                 connection = Datasource.getConnection();
 
-                sql = "UPDATE mr_status_standby_main SET status=?,EventTimestamp=? WHERE Hvid=?";
+                sql = "UPDATE mr_status_standby_main SET status=?,EventTimestamp=?,status_Generated_Time=?,status_Cleared_Time=? WHERE Hvid=?";
                 preparedStatement = connection.prepareStatement(sql);
                 for (int i = 0; i < NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.size(); i++) {
                     try {
                         preparedStatement.setString(1, NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getState());
                         preparedStatement.setTimestamp(2, NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getEventTime());
-                        preparedStatement.setString(3, NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getHvid());
+                        preparedStatement.setTimestamp(3, NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getState().equalsIgnoreCase("2") ? NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getEventTime() : null);
+                        preparedStatement.setTimestamp(4, NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getState().equalsIgnoreCase("1") ? NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getEventTime() : null);
+                        preparedStatement.setString(5, NodeStatusLatencyMonitoring.mrStatusUpdateListTemp.get(i).getHvid());
                        
                         preparedStatement.addBatch();
                       //  System.out.println("updated IP :" + NodeStatusLatencyMonitoring.latency_update_temp.get(i).getDevice_ip());
