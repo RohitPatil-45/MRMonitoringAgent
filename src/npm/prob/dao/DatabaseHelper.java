@@ -48,7 +48,8 @@ public class DatabaseHelper {
 
             // String query = "select node.DEVICE_IP,node.DEVICE_NAME,node.DEVICE_TYPE,node.GROUP_NAME,node.COMPANY,node.LOCATION,node.DISTRICT,node.STATE,node.ZONE,parm.LATENCY_HISTORY,parm.LATENCY_THRESHOLD,mon.NODE_STATUS FROM ADD_NODE node JOIN NODE_PARAMETER parm ON node.DEVICE_IP=parm.DEVICE_IP JOIN node_monitoring mon ON node.DEVICE_IP=mon.NODE_IP  WHERE parm.MONITORING='yes' ORDER BY node.ID ";
             // String query = "select node.DEVICE_IP,node.DEVICE_NAME,node.DEVICE_TYPE,node.GROUP_NAME,node.COMPANY,node.LOCATION,node.DISTRICT,node.STATE,node.ZONE,parm.LATENCY_HISTORY,parm.LATENCY_THRESHOLD,mon.NODE_STATUS FROM ADD_NODE node JOIN NODE_PARAMETER parm ON node.DEVICE_IP=parm.DEVICE_IP JOIN node_monitoring mon ON node.DEVICE_IP=mon.NODE_IP  WHERE parm.MONITORING='yes' ORDER BY node.ID ";
-            String query = "SELECT hvid, hvnamn, hvnamn2, hvmanagementadr, hvservicemode, hvhostnamn, hvserienr FROM netadmin.hv WHERE hvfab = 23 and hvid = '19036'";
+            String query = "SELECT hvid, hvnamn, hvnamn2, hvmanagementadr, hvservicemode, hvhostnamn, hvserienr FROM netadmin.hv WHERE hvfab = 23 and hvid in ('19036','24243','24805')";
+            
 
             rs = st1.executeQuery(query);
             while (rs.next()) {

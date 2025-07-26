@@ -55,7 +55,7 @@ public class MasterRadioPHPMon implements Runnable {
             ProcessBuilder builder = null;
 
             if (simulation) {
-                builder = new ProcessBuilder("php", "C:Simulation\\MRMonitoring.php", radio.getHvserienr());
+                builder = new ProcessBuilder("php", "C:Simulation\\MR\\"+deviceName+".php", radio.getHvserienr());
             } else {
                 builder = new ProcessBuilder("php", "C:Canaris\\MasterRadio\\MRMonitoring.php", radio.getHvserienr());
             }
