@@ -15,10 +15,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import npm.prob.dao.DatabaseHelper;
 import npm.prob.datasource.Datasource;
+import npm.prob.model.EventLog;
 import npm.prob.model.MasterRadioModel;
 import npm.prob.model.MrSatelHscModel;
 import npm.prob.model.NodeStausModel;
 import org.json.JSONObject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 
 /**
  *
@@ -30,6 +39,11 @@ public class MasterRadioPHPMon implements Runnable {
     DatabaseHelper db = new DatabaseHelper();
     boolean simulation = true;
     String deviceType = "MASTER_RADIO";
+
+    private static final int MAX_RETRIES = 3;
+    private static final int RETRY_DELAY_MS = 2000;
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     MasterRadioPHPMon(MasterRadioModel m) {
         this.radio = m;
@@ -55,7 +69,7 @@ public class MasterRadioPHPMon implements Runnable {
             ProcessBuilder builder = null;
 
             if (simulation) {
-                builder = new ProcessBuilder("php", "C:Simulation\\MR\\"+deviceName+".php", radio.getHvserienr());
+                builder = new ProcessBuilder("php", "C:Simulation\\MR\\" + deviceName + ".php", radio.getHvserienr());
             } else {
                 builder = new ProcessBuilder("php", "C:Canaris\\MasterRadio\\MRMonitoring.php", radio.getHvserienr());
             }
@@ -122,12 +136,12 @@ public class MasterRadioPHPMon implements Runnable {
 
                             eventMsg1 = String.valueOf(modemState).equalsIgnoreCase("2") ? "master radio : " + deviceName + " change from Main to Standby" : "master radio : " + deviceName + " change in Main Mode";
                             netadminMsg = String.valueOf(modemState).equalsIgnoreCase("2") ? "status = " + modemState + "Active modem is STANDBY" : "status = " + modemState + " Active modem is MAIN";
-                            
 
                             isAffected = String.valueOf(modemState).equalsIgnoreCase("2") ? "1" : "0";
                             problem = String.valueOf(modemState).equalsIgnoreCase("1") ? "Cleared" : "Problem";
                             serviceId = "mr_state";
-                            db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "Satel HSC100 monitoring", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+                            //db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "Satel HSC100 monitoring", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+                            sendEventLogToApi(deviceID, deviceName, eventMsg1, 0, "Satel HSC100 monitoring", event_time, netadminMsg, isAffected, problem, serviceId, deviceType, 0);
                         }
 
                     } catch (Exception e) {
@@ -165,7 +179,8 @@ public class MasterRadioPHPMon implements Runnable {
                         netadminMsg = eventMsg1;
                         isAffected = "1";
                         serviceId = "mr_status";
-                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 4, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+                        //db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 4, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+                        sendEventLogToApi(deviceID, deviceName, eventMsg1, 4, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType,0);
 
                     } else if (router_status_xml.equals("Down3") && router_status.equals("Down")) {
                         //    //System.out.println("%%%%%..Skip Down condition ");
@@ -179,7 +194,8 @@ public class MasterRadioPHPMon implements Runnable {
                         isAffected = "0";
                         problem = "Cleared";
                         serviceId = "mr_status";
-                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+//                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+                        sendEventLogToApi(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType,0);
 //                            try {
 //                                StatusChangeDiff t22 = null;
 //                                t22 = new StatusChangeDiff();
@@ -208,7 +224,8 @@ public class MasterRadioPHPMon implements Runnable {
                         isAffected = "0";
                         problem = "Cleared";
                         serviceId = "mr_status";
-                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+//                        db.insertIntoEventLog(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType);
+                        sendEventLogToApi(deviceID, deviceName, eventMsg1, 0, "MR Status", event_time, netadminMsg, isAffected, problem, serviceId, deviceType,0);
 
 //                            try {
 //                                StatusChangeDiff t22 = null;
@@ -303,4 +320,86 @@ public class MasterRadioPHPMon implements Runnable {
             }
         }
     }
+
+    public void sendEventLogToApi(String deviceID, String deviceName, String eventMsg, int severity, String serviceName, Timestamp evenTimestamp,
+            String netadmin_msg, String isAffected, String problem, String serviceId, String deviceType, int attempt) {
+        EventLog log = new EventLog();
+        log.setDeviceId(deviceID);
+        log.setDeviceName(deviceName);
+        log.setEventMsg(eventMsg);
+        log.setSeverity(String.valueOf(severity));
+        log.setServiceName(serviceName);
+        log.setEventTimestamp(evenTimestamp);
+        log.setNetadminMsg(netadmin_msg);
+        log.setIsaffected(Integer.valueOf(isAffected));
+        log.setProblemClear(problem);
+        log.setServiceID(serviceId);
+        log.setDeviceType(deviceType);
+        
+        System.out.println("service id = "+serviceId);
+        System.out.println("sAffected = "+isAffected);
+
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        ObjectMapper mapper = new ObjectMapper();
+
+        try {
+            String json = mapper.writeValueAsString(log);
+            HttpPost request = new HttpPost("http://localhost:8083/api/event/log"); // adjust host/port
+            request.setHeader("Content-Type", "application/json");
+            request.setEntity(new StringEntity(json));
+
+            CloseableHttpResponse response = httpClient.execute(request);
+            int statusCode = response.getStatusLine().getStatusCode();
+
+            if (statusCode >= 200 && statusCode < 300) {
+                System.out.println("Log sent successfully: " + statusCode);
+            } else {
+                System.err.println("Failed to send log, status: " + statusCode);
+                retryIfNeeded(log, attempt);
+            }
+
+            response.close();
+        } catch (IOException e) {
+            System.err.println("Exception while sending log: " + e.getMessage());
+            retryIfNeeded(log, attempt);
+        } finally {
+            try {
+                httpClient.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    private void retryIfNeeded(EventLog log, int attempt) {
+        if (attempt < MAX_RETRIES) {
+            System.out.println("Retrying sendEventLogToApi... Attempt " + (attempt + 1));
+            try {
+                Thread.sleep(RETRY_DELAY_MS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt(); // Preserve interrupt status
+                return;
+            }
+
+            // Retry the API call with incremented attempt count
+            sendEventLogToApi(
+                    log.getDeviceId(),
+                    log.getDeviceName(),
+                    log.getEventMsg(),
+                    Integer.valueOf(log.getSeverity()),
+                    log.getServiceName(),
+                    log.getEventTimestamp(),
+                    log.getNetadminMsg(),
+                    log.getIsaffected().toString(),
+                    log.getProblemClear(),
+                    log.getServiceID(),
+                    log.getDeviceType(),
+                    attempt + 1
+            );
+        } else {
+            System.err.println("Max retries reached. Dropping event log.");
+        }
+    }
+
 }
